@@ -1,37 +1,57 @@
--- 12.	List the customer name, the amount they spent and the waiter’s name for all bills. Order the list by the amount spent, highest bill first.
-SELECT cust_name, bill_total, s.first_name  ||' '||  s.surname AS waiter_name
-FROM restBill
-JOIN restStaff AS s ON restBill.waiter_no = s.staff_no
-ORDER BY bill_total DESC;
--- 13.	List the names of customers who spent more than 450.00 on a single bill on occasions when ‘Charles’ was their Headwaiter.
-SELECT cust_name
-FROM restBill AS b
-JOIN restRoom_management AS rm ON b.bill_date = rm.room_date
-JOIN restStaff AS hs ON rm.headwaiter = hs.staff_no
-WHERE b.bill_total > 450.00 AND hs.first_name = 'Charles';
--- 14.	A customer called Nerida has complained that a waiter was rude to her when she dined at the restaurant on the 11th January 2016. What is the name of the Headwaiter who will have to deal with the matter?
-SELECT hs.first_name, hs.surname
-FROM restRoom_management AS rm
-JOIN restStaff AS hs ON rm.headwaiter = hs.staff_no
-WHERE rm.room_name = 'Green' AND rm.room_date = 160111;
--- 15.	What is the name of the customer with the smallest bill? List only one name in your answer.
-SELECT cust_name
-FROM restBill
-ORDER BY bill_total ASC
-LIMIT 1;
--- 16.	Which waiters have taken 2 or more bills on a single date? List the waiter names, the dates and the number of bills they have taken.
-SELECT s.first_name, s.surname, b.bill_date, COUNT(b.bill_no) AS bill_count
-FROM restBill AS b
-JOIN restStaff AS s ON b.waiter_no = s.staff_no
-GROUP BY s.staff_no, b.bill_date
-HAVING COUNT(b.bill_no) >= 2;
--- 17.	List the rooms with tables that sit more than 6 people and how many of such tables they have.
-SELECT room_name, COUNT(*) AS num_tables
-FROM restRest_table
-WHERE no_of_seats > 6
-GROUP BY room_name;
--- 18.	List the names of the rooms and the total amount taken on bills in each room.
-SELECT rt.room_name, SUM(b.bill_total) AS total_amount
-FROM restBill AS b
-JOIN restRest_table AS rt ON b.table_no = rt.table_no
-GROUP BY rt.room_name;
+
+--1.	List the names of the waiters who have served the customer Tanya Singh.
+
+SELECT s.first_name, s.surname
+FROM restStaff s
+JOIN restBill b ON s.staff_no = b.waiter_no
+WHERE b.cust_name = 'Tanya Singh';
+
+--2.	On which dates in February 2016 did the Headwaiter 'Charles' manage the 'Green' room? The output date should be in the format they are stored.
+
+SELECT rm.room_date
+FROM restRoom_management rm
+JOIN restStaff s ON rm.headwaiter = s.staff_no
+WHERE s.first_name =  'Charles' AND rm.room_name = 'Green' AND rm.room_date  BETWEEN 160201 AND 160230;
+
+--3.	List the names and surnames of the waiters with the same headwaiter as the waiter Zoe Ball.
+SELECT s.first_name , s.surname
+FROM restStaff s
+WHERE s.headwaiter =(
+SELECT headwaiter 
+FROM restStaff 
+WHERE first_name = 'Zoe' AND s.surname = 'Ball');
+
+--4.	List the customer name, the amount they spent and the waiter’s name for all bills. Order the list by the amount spent, highest bill first.
+SELECT rb.cust_name , rb.bill_total, s.first_name , s.surname
+FROM restBill rb
+JOIN restStaff s ON rb.waiter_no = staff_no
+ORDER BY rb.bill_total DESC;
+
+--5.	List the names and surnames of the waiters who serve tables that worked in the same team that served bills 00014 and 00017.
+SELECT DISTINCT s.first_name, s.surname -- Select unique first and last names of waiters
+FROM restStaff s -- From the restStaff table, which contains staff details
+WHERE s.headwaiter IN ( -- Find waiters whose headwaiter is one of the following:
+    SELECT DISTINCT headwaiter -- Get unique headwaiters
+    FROM restStaff -- From the restStaff table
+    WHERE staff_no IN ( -- For staff numbers of waiters who served bills 00014 and 00017:
+        SELECT waiter_no -- Get the staff number (waiter_no) of waiters
+        FROM restBill -- From the restBill table, which links bills to waiters
+        WHERE bill_no IN (00014, 00017) -- Only consider bills 00014 and 00017
+    )
+);
+
+--6.	List the names and surnames of the waiters in the team (including the headwaiter) that served Blue room on 160312.
+SELECT DISTINCT s.first_name, s.surname -- Select unique first and last names of staff (waiters and headwaiter)
+FROM restStaff s -- From the restStaff table, which contains staff details
+WHERE s.staff_no = ( -- Include the headwaiter whose staff number is:
+    SELECT headwaiter -- Find the headwaiter responsible
+    FROM restRoom_management -- From the restRoom_management table, which records room assignments
+    WHERE room_name = 'Blue' -- For the Blue room
+    AND room_date = 160312 -- On the date 160312
+)
+OR s.headwaiter = ( -- Include all waiters who report to the same headwaiter:
+    SELECT headwaiter -- Find the headwaiter responsible
+    FROM restRoom_management -- From the restRoom_management table
+    WHERE room_name = 'Blue' -- For the Blue room
+    AND room_date = 160312 -- On the date 160312
+);
